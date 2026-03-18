@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bodyText</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app">
+
+        <!-- Sidebar: tabbed controls -->
+        <aside class="sidebar">
+            <nav class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="glyph">Glyph</button>
+                <button class="sidebar-tab" data-tab="alphabet">Alphabet</button>
+                <button class="sidebar-tab" data-tab="pose">Pose</button>
+                <button class="sidebar-tab" data-tab="guides">Guides</button>
+            </nav>
+
+            <!-- Glyph tab -->
+            <div class="sidebar-panel active" id="tab-glyph">
+                <span class="sidebar-section-label">Current Letter</span>
+                <div class="btn-group" style="align-items: center;">
+                    <input id="letter-input" type="text" maxlength="1" value="A" class="letter-input">
+                    <button id="btn-save-letter" class="btn">Save</button>
+                    <button id="btn-load-letter" class="btn">Load</button>
+                </div>
+                <span id="letter-status" class="status-text"></span>
+
+                <span class="sidebar-section-label">Reference Letter</span>
+                <div class="btn-group" style="align-items: center;">
+                    <select id="ref-letter-select" class="ref-select">
+                        <option value="">None</option>
+                    </select>
+                    <button id="btn-copy-ref" class="btn">Copy From</button>
+                </div>
+
+                <span class="sidebar-section-label">Stroke</span>
+                <div class="stroke-control">
+                    <input id="stroke-slider" type="range" min="10" max="200" value="30">
+                    <input id="stroke-value" type="number" class="stroke-value" min="10" max="200" value="30">
+                </div>
+
+                <span class="sidebar-section-label">Tangency</span>
+                <div class="stroke-control">
+                    <input id="tangency-slider" type="range" min="0" max="100" value="50">
+                    <input id="tangency-value" type="number" class="stroke-value" min="0" max="1" step="0.01" value="0.50">
+                </div>
+
+                <div class="btn-group btn-group--wrap">
+                    <button class="cap-btn btn-outline" data-cap="butt">Butt</button>
+                    <button class="cap-btn btn-outline active" data-cap="round">Round</button>
+                    <button class="cap-btn btn-outline" data-cap="square">Square</button>
+                    <button class="join-btn btn-outline" data-join="miter">Miter</button>
+                    <button class="join-btn btn-outline active" data-join="round">Round</button>
+                    <button class="join-btn btn-outline" data-join="bevel">Bevel</button>
+                </div>
+                <div class="skeleton-editor">
+                    <canvas id="canvas-skeleton-editor"></canvas>
+                </div>
+
+                <div class="btn-group">
+                    <button id="btn-tool-polyline" class="btn-icon active" title="Polyline">
+                        <svg viewBox="0 0 16 16"><polyline points="2,14 7,4 11,10 14,2"/></svg>
+                    </button>
+                    <button id="btn-tool-arc" class="btn-icon" title="Curve">
+                        <svg viewBox="0 0 16 16"><path d="M2,12 C4,4 12,4 14,12"/></svg>
+                    </button>
+                    <button id="btn-tool-dot" class="btn-icon" title="Dot">
+                        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="currentColor" stroke="none"/></svg>
+                    </button>
+                    <button id="btn-draw-shape" class="btn" title="Draw new segment">Draw</button>
+                    <button id="btn-finish-shape" class="btn" title="Confirm (Esc)" disabled>Confirm</button>
+                </div>
+                <div class="btn-group">
+                    <button id="btn-clear-bindings" class="btn">Clear All Nodes</button>
+                    <button id="btn-mirror-bindings" class="btn">Mirror</button>
+                </div>
+
+                <span class="sidebar-section-label">Hands-Free Save</span>
+                <div class="btn-group">
+                    <button id="btn-audio-save" class="btn">Audio Save</button>
+                </div>
+                <div id="audio-controls" style="display: none;">
+                    <div class="stroke-control">
+                        <input id="audio-sensitivity-slider" type="range" min="1" max="100" value="30">
+                        <input id="audio-sensitivity-value" type="number" class="stroke-value" min="1" max="100" value="30">
+                    </div>
+                    <div class="audio-meter">
+                        <div id="audio-meter-fill" class="audio-meter-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alphabet tab -->
+            <div class="sidebar-panel" id="tab-alphabet">
+                <span class="sidebar-section-label">Designed Glyphs</span>
+                <div id="alphabet-grid" class="alphabet-grid"></div>
+
+                <span class="sidebar-section-label">Aspect Ratio</span>
+                <div class="btn-group">
+                    <button class="ratio-btn btn-outline active" data-ratio="1/2">1:2</button>
+                    <button class="ratio-btn btn-outline" data-ratio="2/3">2:3</button>
+                    <button class="ratio-btn btn-outline" data-ratio="3/4">3:4</button>
+                    <button class="ratio-btn btn-outline" data-ratio="1/1">1:1</button>
+                </div>
+
+                <span class="sidebar-section-label">Export / Import</span>
+                <div class="btn-group btn-group--wrap">
+                    <button id="btn-export-json" class="btn">Export JSON</button>
+                    <button id="btn-import-json" class="btn">Import JSON</button>
+                    <input id="file-import-json" type="file" accept=".json" hidden>
+                    <button id="btn-export-otf" class="btn">Export .otf</button>
+                    <button id="btn-export-svgs" class="btn">Export SVGs</button>
+                    <button id="btn-export-ufo" class="btn">Export .ufo</button>
+                </div>
+
+                <span id="status" class="status-text">Initializing...</span>
+            </div>
+
+            <!-- Pose tab -->
+            <div class="sidebar-panel" id="tab-pose">
+                <span class="sidebar-section-label">Persons</span>
+                <div class="btn-group">
+                    <button id="btn-dual-person" class="btn">2-Person</button>
+                </div>
+
+                <span class="sidebar-section-label">Skeleton Nodes</span>
+                <div class="btn-group">
+                    <button id="btn-skeleton-toggle" class="btn active">Visible</button>
+                </div>
+
+                <span class="sidebar-section-label">Confidence Threshold</span>
+                <div class="stroke-control">
+                    <input id="confidence-slider" type="range" min="0" max="100" value="30">
+                    <input id="confidence-value" type="number" class="stroke-value" min="0" max="1" step="0.01" value="0.30">
+                </div>
+
+                <span class="sidebar-section-label">Smoothing</span>
+                <div class="stroke-control">
+                    <input id="smoothing-slider" type="range" min="0" max="100" value="50">
+                    <input id="smoothing-value" type="number" class="stroke-value" min="0" max="1" step="0.1" value="0.5">
+                </div>
+
+                <span class="sidebar-section-label">Webcam Opacity</span>
+                <div class="stroke-control">
+                    <input id="opacity-slider" type="range" min="0" max="100" value="50">
+                    <input id="opacity-value" type="number" class="stroke-value" min="0" max="100" value="50">
+                </div>
+            </div>
+
+            <!-- Guides tab -->
+            <div class="sidebar-panel" id="tab-guides">
+                <span class="sidebar-section-label">Baseline Position</span>
+                <div class="stroke-control">
+                    <input id="guide-baseline-slider" type="range" min="0" max="100" value="72">
+                    <input id="guide-baseline-value" type="number" class="stroke-value" min="0" max="100" value="72">
+                </div>
+
+                <span class="sidebar-section-label">Ascender ↑</span>
+                <div class="stroke-control">
+                    <input id="guide-ascender-slider" type="range" min="0" max="1000" value="800">
+                    <input id="guide-ascender-value" type="number" class="stroke-value" min="0" max="1000" value="800">
+                </div>
+
+                <span class="sidebar-section-label">Cap Height ↑</span>
+                <div class="stroke-control">
+                    <input id="guide-cap-slider" type="range" min="0" max="1000" value="700">
+                    <input id="guide-cap-value" type="number" class="stroke-value" min="0" max="1000" value="700">
+                </div>
+
+                <span class="sidebar-section-label">x-Height ↑</span>
+                <div class="stroke-control">
+                    <input id="guide-xheight-slider" type="range" min="0" max="1000" value="500">
+                    <input id="guide-xheight-value" type="number" class="stroke-value" min="0" max="1000" value="500">
+                </div>
+
+                <span class="sidebar-section-label">Descender ↓</span>
+                <div class="stroke-control">
+                    <input id="guide-descender-slider" type="range" min="0" max="1000" value="200">
+                    <input id="guide-descender-value" type="number" class="stroke-value" min="0" max="1000" value="200">
+                </div>
+
+                <span class="sidebar-section-label">UPM</span>
+                <span id="guide-upm-status" class="status-text">800 + 200 = 1000 / 1000</span>
+
+                <span class="sidebar-section-label">Side Bearings</span>
+                <div class="stroke-control">
+                    <span class="stroke-value" style="min-width: auto;">L</span>
+                    <input id="guide-bearing-left-slider" type="range" min="0" max="40" value="10">
+                    <input id="guide-bearing-left-value" type="number" class="stroke-value" min="0" max="40" value="10">
+                </div>
+                <div class="stroke-control">
+                    <span class="stroke-value" style="min-width: auto;">R</span>
+                    <input id="guide-bearing-right-slider" type="range" min="0" max="40" value="10">
+                    <input id="guide-bearing-right-value" type="number" class="stroke-value" min="0" max="40" value="10">
+                </div>
+            </div>
+        </aside>
+
+        <!-- Camera viewport: webcam + skeleton + glyph overlays -->
+        <main class="viewport">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas-skeleton"></canvas>
+            <canvas id="canvas-letter"></canvas>
+            <canvas id="canvas-guides"></canvas>
+
+            <!-- Bottom-left icon controls (vertical stack with tooltips) -->
+            <div class="viewport-controls">
+                <button class="viewport-btn active" id="btn-mirror">
+                    &#8596;<span class="viewport-tooltip">Mirror</span>
+                </button>
+                <button class="viewport-btn active" id="btn-toggle-video">
+                    &#9673;<span class="viewport-tooltip">Webcam</span>
+                </button>
+                <button class="viewport-btn" id="btn-toggle-skeleton">
+                    &#9783;<span class="viewport-tooltip">Skeleton</span>
+                </button>
+                <button class="viewport-btn active" id="btn-fill-fit">
+                    &#9635;<span class="viewport-tooltip">Fill / Fit</span>
+                </button>
+                <button class="viewport-btn" id="btn-bounding-box">
+                    &#9633;<span class="viewport-tooltip">Bounding Box</span>
+                </button>
+                <button class="viewport-btn" id="btn-guides">
+                    &#9776;<span class="viewport-tooltip">Guides</span>
+                </button>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- TensorFlow.js + MoveNet (CDN, no bundler) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgpu/dist/tf-backend-webgpu.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+    <!-- JSZip for UFO export -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+    <!-- opentype.js for font export -->
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js/dist/opentype.min.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
