@@ -49,18 +49,27 @@ export function getCurrentLetter() { return currentLetter; }
 
 export function setGetDeformed(fn) { _getDeformed = fn; }
 
-/** Save the current letter to the store. */
-export function saveCurrentLetter() {
+/**
+ * Save the current letter to the store.
+ * @param {object} [opts]
+ * @param {boolean} [opts.preserveSnapshot=false] — if true and a deformedSnapshot
+ *   already exists in the store, keep it instead of overwriting with the live state.
+ *   Used by auto-save (switchToLetter) so manual saves aren't silently overwritten.
+ */
+export function saveCurrentLetter({ preserveSnapshot = false } = {}) {
     const deformed = _getDeformed();
+    const existing = preserveSnapshot ? letterStore.getLetter(currentLetter) : null;
+    const snapshot = (preserveSnapshot && existing?.deformedSnapshot)
+        ? existing.deformedSnapshot
+        : (deformed ? JSON.parse(JSON.stringify(deformed)) : null);
+
     letterStore.saveLetter(currentLetter, {
         shapes:       shapeEditor.getShapes(),
         bindings:     bindingManager.getBindings(),
         joinFlags:    shapeEditor.getJoinFlags(),
         bearingLeft:  guideState.bearingLeft,
         bearingRight: guideState.bearingRight,
-        deformedSnapshot: deformed
-            ? JSON.parse(JSON.stringify(deformed))
-            : null,
+        deformedSnapshot: snapshot,
     });
     letterStatus.textContent = `'${currentLetter}' saved`;
     updateAlphabetGrid(alphabetGridEl, letterStore, currentLetter);
@@ -106,7 +115,7 @@ export function copyFromLetter(refChar) {
 /** Switch to a different letter (auto-saves the current one first). */
 export function switchToLetter(char) {
     if (char === currentLetter) return;
-    saveCurrentLetter();
+    saveCurrentLetter({ preserveSnapshot: true });
     currentLetter = char;
     letterInput.value = currentLetter;
     loadCurrentLetter();

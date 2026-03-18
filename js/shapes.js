@@ -25,7 +25,7 @@ export const SHAPE_TYPES = {
 };
 
 function createShape(type, points, strokeWidth, lineCap, lineJoin, tangency) {
-    return { id: nextId++, type, points, strokeWidth, lineCap, lineJoin, tangency };
+    return { id: nextId++, type, points, strokeWidth, lineCap, lineJoin, tangency, closed: false };
 }
 
 /**
@@ -75,15 +75,44 @@ function _computeSplineSegmentsCore(pts, tension) {
 }
 
 /**
- * Compute cubic bezier control points for a Catmull-Rom-style spline.
- * Results are memoized by point positions + tension.
+ * Compute cubic bezier control points for a CLOSED Catmull-Rom spline.
+ * Wraps neighbor lookups so the curve smoothly loops back to the start.
+ * @private
  */
-function _computeSplineSegments(pts, tension) {
-    const key = _splineCacheKey(pts, tension);
+function _computeSplineSegmentsClosedCore(pts, tension) {
+    const segs = [];
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+        const p0 = pts[(i - 1 + n) % n];
+        const p1 = pts[i];
+        const p2 = pts[(i + 1) % n];
+        const p3 = pts[(i + 2) % n];
+
+        const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
+        const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
+        const cp2x = p2.x - (p3.x - p1.x) * tension / 3;
+        const cp2y = p2.y - (p3.y - p1.y) * tension / 3;
+
+        segs.push({ cp1x, cp1y, cp2x, cp2y, ex: p2.x, ey: p2.y });
+    }
+    return segs;
+}
+
+/**
+ * Compute cubic bezier control points for a Catmull-Rom-style spline.
+ * Results are memoized by point positions + tension + closed flag.
+ * @param {Array} pts
+ * @param {number} tension
+ * @param {boolean} [closed=false]
+ */
+function _computeSplineSegments(pts, tension, closed = false) {
+    const key = (closed ? 'C|' : 'O|') + _splineCacheKey(pts, tension);
     const cached = _splineCache.get(key);
     if (cached) return cached;
 
-    const segs = _computeSplineSegmentsCore(pts, tension);
+    const segs = closed
+        ? _computeSplineSegmentsClosedCore(pts, tension)
+        : _computeSplineSegmentsCore(pts, tension);
 
     // Evict oldest half when cache is full
     if (_splineCache.size >= _SPLINE_CACHE_MAX) {
@@ -96,13 +125,13 @@ function _computeSplineSegments(pts, tension) {
     return segs;
 }
 
-function _drawSmoothCurve(ctx, pts, tension) {
+function _drawSmoothCurve(ctx, pts, tension, closed = false) {
     ctx.moveTo(pts[0].x, pts[0].y);
-    if (pts.length === 2) {
+    if (pts.length === 2 && !closed) {
         ctx.lineTo(pts[1].x, pts[1].y);
         return;
     }
-    const segs = _computeSplineSegments(pts, tension);
+    const segs = _computeSplineSegments(pts, tension, closed);
     for (const s of segs) {
         ctx.bezierCurveTo(s.cp1x, s.cp1y, s.cp2x, s.cp2y, s.ex, s.ey);
     }
@@ -467,6 +496,18 @@ export class ShapeEditor {
             // Subsequent points → add to active shape
             const shape = this._getShape(this.activeShapeId);
             if (shape) {
+                // Close detection: clicking on the opposite endpoint with 3+ points
+                if (shape.type !== SHAPE_TYPES.DOT && shape.points.length >= 3) {
+                    const target = this._extendFromStart
+                        ? shape.points[shape.points.length - 1]
+                        : shape.points[0];
+                    if (Math.abs(x - target.x) < 0.001 && Math.abs(y - target.y) < 0.001) {
+                        shape.closed = true;
+                        this.finishActiveShape();
+                        return;
+                    }
+                }
+
                 if (this._extendFromStart) {
                     shape.points.unshift({ x, y });
                     this._shiftJoinFlags(shape.id, -1, 1); // shift all join flags up by 1
@@ -582,6 +623,10 @@ export class ShapeEditor {
                 // Update join flags: shift indices above the deleted point
                 this._shiftJoinFlags(shape.id, this.selectedPointIndex, -1);
 
+                // Auto-open closed shapes that drop below 3 points
+                if (shape.closed && shape.points.length < 3) {
+                    shape.closed = false;
+                }
                 // Remove shape if too few points
                 const minPoints = shape.type === SHAPE_TYPES.DOT ? 1 : 2;
                 if (shape.points.length < minPoints) {
@@ -761,7 +806,7 @@ export class ShapeEditor {
                 ctx.fill();
             } else if (shape.type === SHAPE_TYPES.ARC && pts.length >= 2) {
                 ctx.beginPath();
-                _drawSmoothCurve(ctx, pts, shape.tangency ?? DEFAULT_TANGENCY);
+                _drawSmoothCurve(ctx, pts, shape.tangency ?? DEFAULT_TANGENCY, shape.closed);
                 ctx.stroke();
             } else if (shape.type === SHAPE_TYPES.POLYLINE && pts.length >= 2) {
                 ctx.beginPath();
@@ -769,6 +814,7 @@ export class ShapeEditor {
                 for (let i = 1; i < pts.length; i++) {
                     ctx.lineTo(pts[i].x, pts[i].y);
                 }
+                if (shape.closed) ctx.closePath();
                 ctx.stroke();
             }
 
@@ -847,7 +893,8 @@ export class ShapeEditor {
     }
 }
 
-/** Re-export spline math for fontExport.js and app.js viewport rendering. */
+/** Re-export spline math for fontExport.js and app.js viewport rendering.
+ *  Signature: computeSplineSegments(pts, tension, closed = false) */
 export { _computeSplineSegments as computeSplineSegments };
 
 /**

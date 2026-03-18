@@ -105,9 +105,38 @@ const STATIC_SKELETONS_SINGLE = [
 
 let STATIC_SKELETONS = STATIC_SKELETONS_SINGLE;
 
-/** Switch sidebar reference skeletons when dual-person mode changes. */
+/** Switch sidebar reference skeletons when dual-person mode changes.
+ *  Remaps all bound shape control points to the new keypoint positions
+ *  so shapes follow the skeletons when the layout changes. */
 function updateStaticSkeletons() {
-    STATIC_SKELETONS = state.dualPerson ? STATIC_SKELETONS_DUAL : STATIC_SKELETONS_SINGLE;
+    const newSkeletons = state.dualPerson ? STATIC_SKELETONS_DUAL : STATIC_SKELETONS_SINGLE;
+
+    // Build lookup: skeletonIndex → keypointName → { x, y } for new layout
+    const skeletonMaps = newSkeletons.map((kps) => {
+        const map = {};
+        for (const kp of kps) map[kp.name] = kp;
+        return map;
+    });
+
+    // Move each bound shape point to the keypoint's new position
+    const bindings = bindingManager.getBindings();
+    for (const [key, value] of Object.entries(bindings)) {
+        const [shapeIdStr, pointIdxStr] = key.split(':');
+        const skIdx = Number(value.substring(0, value.indexOf(':')));
+        const kpName = value.substring(value.indexOf(':') + 1);
+
+        const newKp = skeletonMaps[skIdx]?.[kpName];
+        if (!newKp) continue;  // skeleton B bindings in single mode — leave in place
+
+        const shape = shapeEditor.shapes.find((s) => s.id === Number(shapeIdStr));
+        const pt = shape?.points[Number(pointIdxStr)];
+        if (pt) {
+            pt.x = newKp.x;
+            pt.y = newKp.y;
+        }
+    }
+
+    STATIC_SKELETONS = newSkeletons;
     prevSkeletonCentroids = [null, null];
     smoothedSlots = [null, null];
     _renderDirty = true;

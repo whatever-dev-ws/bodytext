@@ -8,13 +8,13 @@
 import { computeSplineSegments, DEFAULT_TANGENCY, buildJoinChains } from './shapes.js';
 
 /** Draw a smooth spline through points using shared computeSplineSegments. */
-function _drawSplineCtx(ctx, pts, tension) {
+function _drawSplineCtx(ctx, pts, tension, closed = false) {
     ctx.moveTo(pts[0].x, pts[0].y);
-    if (pts.length === 2) {
+    if (pts.length === 2 && !closed) {
         ctx.lineTo(pts[1].x, pts[1].y);
         return;
     }
-    const segs = computeSplineSegments(pts, tension);
+    const segs = computeSplineSegments(pts, tension, closed);
     for (const s of segs) {
         ctx.bezierCurveTo(s.cp1x, s.cp1y, s.cp2x, s.cp2y, s.ex, s.ey);
     }
@@ -43,10 +43,10 @@ function drawShapeSegment(vCtx, pts, shape, isFirst) {
     }
 
     if (shape.type === 'arc' && pts.length >= 2) {
-        if (pts.length === 2) {
+        if (pts.length === 2 && !shape.closed) {
             vCtx.lineTo(pts[1].x, pts[1].y);
         } else {
-            const segs = computeSplineSegments(pts, shape.tangency ?? DEFAULT_TANGENCY);
+            const segs = computeSplineSegments(pts, shape.tangency ?? DEFAULT_TANGENCY, shape.closed);
             for (let i = 0; i < segs.length; i++) {
                 const s = segs[i];
                 vCtx.bezierCurveTo(s.cp1x, s.cp1y, s.cp2x, s.cp2y, s.ex, s.ey);
@@ -77,12 +77,13 @@ export function drawSingleShape(vCtx, shape, pts) {
         vCtx.fill();
     } else if (shape.type === 'arc' && pts.length >= 2) {
         vCtx.beginPath();
-        _drawSplineCtx(vCtx, pts, shape.tangency ?? DEFAULT_TANGENCY);
+        _drawSplineCtx(vCtx, pts, shape.tangency ?? DEFAULT_TANGENCY, shape.closed);
         vCtx.stroke();
     } else if (shape.type === 'polyline' && pts.length >= 2) {
         vCtx.beginPath();
         vCtx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) vCtx.lineTo(pts[i].x, pts[i].y);
+        if (shape.closed) vCtx.closePath();
         vCtx.stroke();
     }
     vCtx.restore();

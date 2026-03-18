@@ -63,15 +63,16 @@ function renderPreview(shapes, deformedSnapshot) {
             _offCtx.beginPath();
             _offCtx.moveTo(pts[0].x, pts[0].y);
             for (let j = 1; j < pts.length; j++) _offCtx.lineTo(pts[j].x, pts[j].y);
+            if (shape.closed) _offCtx.closePath();
             _offCtx.stroke();
         } else if (shape.type === 'arc' && pts.length >= 2) {
             _offCtx.beginPath();
             _offCtx.moveTo(pts[0].x, pts[0].y);
-            if (pts.length === 2) {
+            if (pts.length === 2 && !shape.closed) {
                 _offCtx.lineTo(pts[1].x, pts[1].y);
             } else {
                 const tension = shape.tangency ?? DEFAULT_TANGENCY;
-                const segs = computeSplineSegments(pts, tension);
+                const segs = computeSplineSegments(pts, tension, shape.closed);
                 for (const s of segs) {
                     _offCtx.bezierCurveTo(s.cp1x, s.cp1y, s.cp2x, s.cp2y, s.ex, s.ey);
                 }
