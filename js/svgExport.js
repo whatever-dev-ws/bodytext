@@ -38,11 +38,11 @@ function shapePathData(pts, shape, isFirst) {
     }
 
     if (shape.type === 'arc') {
-        if (pts.length === 2) {
+        if (pts.length === 2 && !shape.closed) {
             d += ` L${pts[1].x.toFixed(2)},${pts[1].y.toFixed(2)}`;
         } else {
             const tension = shape.tangency ?? DEFAULT_TANGENCY;
-            const segs = computeSplineSegments(pts, tension);
+            const segs = computeSplineSegments(pts, tension, shape.closed);
             for (const s of segs) {
                 d += ` C${s.cp1x.toFixed(2)},${s.cp1y.toFixed(2)} ${s.cp2x.toFixed(2)},${s.cp2y.toFixed(2)} ${s.ex.toFixed(2)},${s.ey.toFixed(2)}`;
             }
@@ -53,6 +53,7 @@ function shapePathData(pts, shape, isFirst) {
             d += ` L${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)}`;
         }
     }
+    if (shape.closed) d += ' Z';
     return d;
 }
 

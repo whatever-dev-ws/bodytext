@@ -77,6 +77,7 @@ function renderPreview(shapes, deformedSnapshot) {
                     _offCtx.bezierCurveTo(s.cp1x, s.cp1y, s.cp2x, s.cp2y, s.ex, s.ey);
                 }
             }
+            if (shape.closed) _offCtx.closePath();
             _offCtx.stroke();
         }
     }

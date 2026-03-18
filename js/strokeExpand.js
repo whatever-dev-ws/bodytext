@@ -80,20 +80,25 @@ function subdivideCubic(p0, p1, p2, p3) {
  *   { type: 'line',  p0, p1 }
  *   { type: 'cubic', p0, p1, p2, p3 }
  */
-function shapeToSegments(fontPts, type, tangency) {
+function shapeToSegments(fontPts, type, tangency, closed = false) {
     if (type === 'polyline') {
-        return fontPts.slice(0, -1).map((p, i) => ({
+        const segs = fontPts.slice(0, -1).map((p, i) => ({
             type: 'line', p0: p, p1: fontPts[i + 1],
         }));
+        // Closed polyline: add closing segment from last point back to first
+        if (closed && fontPts.length >= 3) {
+            segs.push({ type: 'line', p0: fontPts[fontPts.length - 1], p1: fontPts[0] });
+        }
+        return segs;
     }
 
-    // 2-point arc is just a line
-    if (fontPts.length === 2) {
+    // 2-point arc is just a line (unless closed)
+    if (fontPts.length === 2 && !closed) {
         return [{ type: 'line', p0: fontPts[0], p1: fontPts[1] }];
     }
 
     // Arc: Catmull-Rom spline → cubic bezier segments
-    const segs = computeSplineSegments(fontPts, tangency ?? DEFAULT_TANGENCY);
+    const segs = computeSplineSegments(fontPts, tangency ?? DEFAULT_TANGENCY, closed);
     let prev = fontPts[0];
     return segs.map(s => {
         const seg = {
@@ -410,7 +415,7 @@ function emitSegReversed(path, seg) {
  * @param {string} lineCap — 'round' | 'butt' | 'square'
  * @param {string} lineJoin — 'round' | 'miter' | 'bevel'
  */
-export function expandStrokeToPath(path, centerSegs, halfW, lineCap, lineJoin) {
+export function expandStrokeToPath(path, centerSegs, halfW, lineCap, lineJoin, closed = false) {
     if (centerSegs.length === 0) return;
 
     // Offset each center segment → arrays of offset segments per group
@@ -460,52 +465,88 @@ export function expandStrokeToPath(path, centerSegs, halfW, lineCap, lineJoin) {
         }
     }
 
-    // ── 3. End cap ──
-    if (lineCap === 'round') {
-        addRoundCap(path, endPt, halfW, endNAngle, true);
-    } else if (lineCap === 'square') {
-        addSquareCap(path, endPt, halfW, endDirA, endNAngle, true);
-    } else {
-        // Butt: straight to right side
-        const lastRightPt = segEnd(lastEl(rightGroups[rightGroups.length - 1]));
-        path.lineTo(lastRightPt.x, lastRightPt.y);
-    }
+    if (closed) {
+        // ── CLOSED PATH: join end→start on left, then close; separate right contour ──
 
-    // ── 4. Backward along right offset groups, with inner/outer-aware joins ──
-    for (let g = rightGroups.length - 1; g >= 0; g--) {
-        const group = rightGroups[g];
-        for (let s = group.length - 1; s >= 0; s--) emitSegReversed(path, group[s]);
+        // Left: join last group back to first
+        const lastLeftEnd = segEnd(lastEl(leftGroups[leftGroups.length - 1]));
+        addJoin(path, startPt, halfW, lastLeftEnd, firstLeftPt, lineJoin);
+        path.closePath();
 
-        if (g > 0) {
-            const fromPt = segStart(rightGroups[g][0]);
-            const toPt   = segEnd(lastEl(rightGroups[g - 1]));
-            const jc     = centerSegs[g].p0;
-            const cross  = turnCross(centerSegs[g - 1], centerSegs[g]);
+        // Right contour (backward winding for correct fill rule)
+        const lastRightEnd = segEnd(lastEl(rightGroups[rightGroups.length - 1]));
+        path.moveTo(lastRightEnd.x, lastRightEnd.y);
+        for (let g = rightGroups.length - 1; g >= 0; g--) {
+            const group = rightGroups[g];
+            for (let s = group.length - 1; s >= 0; s--) emitSegReversed(path, group[s]);
 
-            if (cross < -0.01) {
-                // Right turn → right is inner: trim to intersection
-                const trim = innerTrimPoint(rightGroups[g - 1], rightGroups[g], jc, halfW);
-                path.lineTo(trim ? trim.x : toPt.x, trim ? trim.y : toPt.y);
-                if (trim) path.lineTo(toPt.x, toPt.y);
-            } else if (cross > 0.01) {
-                // Left turn → right is outer: regular join
-                addJoin(path, jc, halfW, fromPt, toPt, lineJoin);
-            } else {
-                if (Math.hypot(toPt.x - fromPt.x, toPt.y - fromPt.y) > 0.5)
-                    path.lineTo(toPt.x, toPt.y);
+            if (g > 0) {
+                const fromPt = segStart(rightGroups[g][0]);
+                const toPt   = segEnd(lastEl(rightGroups[g - 1]));
+                const jc     = centerSegs[g].p0;
+                const cross  = turnCross(centerSegs[g - 1], centerSegs[g]);
+
+                if (cross < -0.01) {
+                    const trim = innerTrimPoint(rightGroups[g - 1], rightGroups[g], jc, halfW);
+                    path.lineTo(trim ? trim.x : toPt.x, trim ? trim.y : toPt.y);
+                    if (trim) path.lineTo(toPt.x, toPt.y);
+                } else if (cross > 0.01) {
+                    addJoin(path, jc, halfW, fromPt, toPt, lineJoin);
+                } else {
+                    if (Math.hypot(toPt.x - fromPt.x, toPt.y - fromPt.y) > 0.5)
+                        path.lineTo(toPt.x, toPt.y);
+                }
             }
         }
-    }
+        path.closePath();
+    } else {
+        // ── OPEN PATH: end cap → right backward → start cap ──
 
-    // ── 5. Start cap ──
-    if (lineCap === 'round') {
-        addRoundCap(path, startPt, halfW, startNAngle, false);
-    } else if (lineCap === 'square') {
-        addSquareCap(path, startPt, halfW, startDirA, startNAngle, false);
-    }
+        // ── 3. End cap ──
+        if (lineCap === 'round') {
+            addRoundCap(path, endPt, halfW, endNAngle, true);
+        } else if (lineCap === 'square') {
+            addSquareCap(path, endPt, halfW, endDirA, endNAngle, true);
+        } else {
+            // Butt: straight to right side
+            const lastRightPt = segEnd(lastEl(rightGroups[rightGroups.length - 1]));
+            path.lineTo(lastRightPt.x, lastRightPt.y);
+        }
 
-    // ── 6. Close ──
-    path.closePath();
+        // ── 4. Backward along right offset groups, with inner/outer-aware joins ──
+        for (let g = rightGroups.length - 1; g >= 0; g--) {
+            const group = rightGroups[g];
+            for (let s = group.length - 1; s >= 0; s--) emitSegReversed(path, group[s]);
+
+            if (g > 0) {
+                const fromPt = segStart(rightGroups[g][0]);
+                const toPt   = segEnd(lastEl(rightGroups[g - 1]));
+                const jc     = centerSegs[g].p0;
+                const cross  = turnCross(centerSegs[g - 1], centerSegs[g]);
+
+                if (cross < -0.01) {
+                    const trim = innerTrimPoint(rightGroups[g - 1], rightGroups[g], jc, halfW);
+                    path.lineTo(trim ? trim.x : toPt.x, trim ? trim.y : toPt.y);
+                    if (trim) path.lineTo(toPt.x, toPt.y);
+                } else if (cross > 0.01) {
+                    addJoin(path, jc, halfW, fromPt, toPt, lineJoin);
+                } else {
+                    if (Math.hypot(toPt.x - fromPt.x, toPt.y - fromPt.y) > 0.5)
+                        path.lineTo(toPt.x, toPt.y);
+                }
+            }
+        }
+
+        // ── 5. Start cap ──
+        if (lineCap === 'round') {
+            addRoundCap(path, startPt, halfW, startNAngle, false);
+        } else if (lineCap === 'square') {
+            addSquareCap(path, startPt, halfW, startDirA, startNAngle, false);
+        }
+
+        // ── 6. Close ──
+        path.closePath();
+    }
 }
 
 /* ── Point resolution helpers ────────────────────────────────── */
@@ -548,12 +589,13 @@ function reverseSegment(seg) {
  */
 export function expandShapeToOutline(path, shape, unitsPerEm, deformed, xShift = 0) {
     const fontPts = resolveToFontUnits(shape, unitsPerEm, deformed, xShift);
-    const segments = shapeToSegments(fontPts, shape.type, shape.tangency);
+    const segments = shapeToSegments(fontPts, shape.type, shape.tangency, shape.closed);
     if (segments.length === 0) return;
 
     expandStrokeToPath(
         path, segments, shape.strokeWidth / 2,
         shape.lineCap || 'round', shape.lineJoin || 'round',
+        shape.closed,
     );
 }
 
@@ -587,7 +629,7 @@ export function expandChainToOutline(path, chain, shapes, unitsPerEm, deformed, 
         }
 
         const fontPts = resolveToFontUnits(shape, unitsPerEm, deformed, xShift);
-        let segs = shapeToSegments(fontPts, shape.type, shape.tangency);
+        let segs = shapeToSegments(fontPts, shape.type, shape.tangency, shape.closed);
 
         if (reversed) segs = segs.reverse().map(reverseSegment);
 

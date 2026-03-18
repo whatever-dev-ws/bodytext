@@ -458,10 +458,22 @@ export class ShapeEditor {
         }
 
         // ── DRAW MODE ──
-        // Allow dragging existing points of the active shape
+        // Allow dragging existing points of the active shape,
+        // BUT check for close-loop first (clicking the opposite endpoint).
         if (this.activeShapeId) {
             const hit = this._hitTestPoint(raw.x, raw.y, 0.03, this.activeShapeId);
             if (hit) {
+                const shape = this._getShape(this.activeShapeId);
+                if (shape && shape.type !== SHAPE_TYPES.DOT && shape.points.length >= 3) {
+                    const closingIndex = this._extendFromStart
+                        ? shape.points.length - 1 : 0;
+                    if (hit.pointIndex === closingIndex) {
+                        shape.closed = true;
+                        this.finishActiveShape();
+                        e.preventDefault();
+                        return;
+                    }
+                }
                 this._dragging = { shapeId: hit.shapeId, pointIndex: hit.pointIndex };
                 e.preventDefault();
                 return;
@@ -496,18 +508,6 @@ export class ShapeEditor {
             // Subsequent points → add to active shape
             const shape = this._getShape(this.activeShapeId);
             if (shape) {
-                // Close detection: clicking on the opposite endpoint with 3+ points
-                if (shape.type !== SHAPE_TYPES.DOT && shape.points.length >= 3) {
-                    const target = this._extendFromStart
-                        ? shape.points[shape.points.length - 1]
-                        : shape.points[0];
-                    if (Math.abs(x - target.x) < 0.001 && Math.abs(y - target.y) < 0.001) {
-                        shape.closed = true;
-                        this.finishActiveShape();
-                        return;
-                    }
-                }
-
                 if (this._extendFromStart) {
                     shape.points.unshift({ x, y });
                     this._shiftJoinFlags(shape.id, -1, 1); // shift all join flags up by 1
@@ -807,6 +807,7 @@ export class ShapeEditor {
             } else if (shape.type === SHAPE_TYPES.ARC && pts.length >= 2) {
                 ctx.beginPath();
                 _drawSmoothCurve(ctx, pts, shape.tangency ?? DEFAULT_TANGENCY, shape.closed);
+                if (shape.closed) ctx.closePath();
                 ctx.stroke();
             } else if (shape.type === SHAPE_TYPES.POLYLINE && pts.length >= 2) {
                 ctx.beginPath();

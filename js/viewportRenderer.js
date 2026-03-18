@@ -78,6 +78,7 @@ export function drawSingleShape(vCtx, shape, pts) {
     } else if (shape.type === 'arc' && pts.length >= 2) {
         vCtx.beginPath();
         _drawSplineCtx(vCtx, pts, shape.tangency ?? DEFAULT_TANGENCY, shape.closed);
+        if (shape.closed) vCtx.closePath();
         vCtx.stroke();
     } else if (shape.type === 'polyline' && pts.length >= 2) {
         vCtx.beginPath();
