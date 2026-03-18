@@ -1,0 +1,70 @@
+/* ── App Shell ──────────────────────────────────────────────────────────── */
+
+.app {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    height: 100vh;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+
+.sidebar {
+    background: var(--color-sidebar);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ── Camera Viewport ───────────────────────────────────────────────────── */
+
+.viewport {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+}
+
+.viewport video {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;       /* default fill mode — toggled by JS */
+    transform-origin: center;
+    z-index: 0;              /* below all canvases */
+    pointer-events: none;    /* prevent accidental pause/play */
+}
+
+/* ── Viewport canvases — stacked on top of each other ──────────────────── */
+
+.viewport canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Render order bottom→top: video(CSS, z:0) → skeleton(1) → shapes(2) → guides(3) */
+#canvas-skeleton  { z-index: 1; }
+#canvas-letter    { z-index: 2; pointer-events: none; }
+#canvas-guides    { z-index: 3; pointer-events: none; }
+
+/* ── Skeleton Editor (sidebar glyph tab) ───────────────────────────────── */
+
+.skeleton-editor {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 180px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-text);
+}
+
+.skeleton-editor canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
