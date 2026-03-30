@@ -1,23 +1,32 @@
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
 
 :root {
-    /* Colors */
-    --color-text: rgb(34, 34, 34);
-    --color-bg: rgb(254, 254, 254);
-    --color-selected: #1446FF;
+    /* Colors – Apple HIG system palette */
+    --color-text: #1d1d1f;
+    --color-text-secondary: rgba(60, 60, 67, 0.6);
+    --color-text-tertiary: rgba(60, 60, 67, 0.3);
+    --color-bg: #ffffff;
+    --color-selected: #007AFF;
+    --color-fill: rgba(120, 120, 128, 0.12);
+    --color-fill-secondary: rgba(120, 120, 128, 0.08);
+    --color-separator: rgba(60, 60, 67, 0.12);
 
     /* Typography */
-    --font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
 
     /* Layout */
-    --glyph-ratio: 1 / 2;
-    --canvas-inset: 20rem;        /* vertical offset of canvas from panel edges */
-    --panel-padding: 4rem;        /* horizontal inset for controls */
-    --control-gap: 4rem;          /* gap between canvas bottom and control window */
-
+    --sidebar-width: 25%;
     /* Panel backgrounds */
-    --color-panel-skeleton: #f5f5f5;
-    --color-panel-letter: #ebebeb;
+    --color-sidebar: rgba(242, 242, 247, 1);
+
+    /* Shape */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+
+    /* Motion */
+    --transition-fast: 0.12s ease;
+    --transition: 0.2s ease;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────── */
@@ -36,4 +45,6 @@ body {
     color: var(--color-text);
     height: 100vh;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }

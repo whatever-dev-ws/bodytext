@@ -2,39 +2,120 @@
 
 .app {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr;
     height: 100vh;
 }
 
-/* ── Panels ─────────────────────────────────────────────────────────────── */
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
 
-.panel {
+.sidebar {
+    background: var(--color-sidebar);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 0.5px solid var(--color-separator);
     position: relative;
+}
+
+/* ── Camera Viewport ───────────────────────────────────────────────────── */
+
+.viewport {
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.viewport video {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;       /* default fill mode — toggled by JS */
+    transform-origin: center;
+    z-index: 0;              /* below all canvases */
+    pointer-events: none;    /* prevent accidental pause/play */
+}
+
+/* ── Viewport canvases — stacked on top of each other ──────────────────── */
+
+.viewport canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Render order bottom→top: video(CSS, z:0) → skeleton(1) → shapes(2) → guides(3) */
+#canvas-skeleton  { z-index: 1; }
+#canvas-letter    { z-index: 2; pointer-events: none; }
+#canvas-guides    { z-index: 3; pointer-events: none; }
+
+/* ── Skeleton Editor (sidebar glyph tab) ───────────────────────────────── */
+
+.skeleton-editor-row {
+    display: flex;
+    gap: 6px;
+    min-height: 300px;
+}
+
+.skeleton-editor {
+    position: relative;
+    flex: 1;
+    min-height: 300px;
+    background: var(--color-bg);
+    border: 0.5px solid var(--color-separator);
+    border-radius: var(--radius-md);
     overflow: hidden;
 }
 
-.panel--camera video {
-    display: none; /* hidden; only used as a source for canvas drawing */
+.skeleton-editor-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 2px 0;
 }
 
-.panel--skeleton {
-    background: var(--color-panel-skeleton);
+.skeleton-tools-spacer {
+    flex: 0 0 6px;
 }
 
-.panel--letter {
-    background: var(--color-panel-letter);
+/* Make editor tool buttons position-relative for tooltips */
+.skeleton-editor-tools .btn-icon {
+    position: relative;
 }
 
-/* ── Canvas ─────────────────────────────────────────────────────────────── */
-/* Centered horizontally, inset vertically. Width derived from aspect-ratio. */
+/* ── Editor Tooltips (left-side, mirrors viewport tooltip pattern) ──── */
 
-.panel canvas {
-    display: block;
+.editor-tooltip {
     position: absolute;
-    top: var(--canvas-inset);
-    left: 50%;
-    transform: translateX(-50%);
-    height: calc(100% - var(--canvas-inset) * 2);
-    aspect-ratio: var(--glyph-ratio);
-    border: 2px solid var(--color-text);
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%) translateX(4px);
+    background: rgba(40, 40, 40, 0.75);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.skeleton-editor-tools .btn-icon:hover .editor-tooltip {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+.skeleton-editor canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
 }

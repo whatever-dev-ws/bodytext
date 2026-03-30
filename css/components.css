@@ -1,75 +1,613 @@
-/* ── Control Window ─────────────────────────────────────────────────────── */
-/* Reusable bar beneath each panel's canvas. Absolutely positioned so it   */
-/* stays fixed when the canvas width changes with --glyph-ratio.           */
+/* ── Sidebar Tabs (Segmented Control) ─────────────────────────────────── */
 
-.control-window {
-    position: absolute;
-    top: calc(100% - var(--canvas-inset) + var(--control-gap));
-    left: var(--panel-padding);
+.sidebar-tabs {
+    display: flex;
+    margin: 12px 12px 0;
+    padding: 2px;
+    background: rgba(118, 118, 128, 0.12);
+    border-radius: var(--radius-md);
+    border: none;
+}
+
+.sidebar-tab {
+    flex: 1;
+    padding: 5px 4px;
+    background: transparent;
+    border: none;
+    font-family: var(--font-family);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--color-text);
+    opacity: 1;
+    border-radius: calc(var(--radius-md) - 2px);
+    transition: all var(--transition);
+}
+
+.sidebar-tab:hover {
+    opacity: 1;
+}
+
+.sidebar-tab.active {
+    opacity: 1;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+}
+
+/* ── Sidebar Panels ───────────────────────────────────────────────────── */
+
+.sidebar-panel {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.sidebar-panel.active {
+    display: flex;
+}
+
+/* macOS-style thin scrollbar */
+.sidebar-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-panel::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
+
+.sidebar-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+}
+
+/* ── Sidebar Hint (instruction text under editor) ────────────────────── */
+
+.sidebar-hint {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    line-height: 1.4;
+}
+
+/* ── Cluster Divider (visual gap between logical groups) ──────────────── */
+
+.sidebar-divider {
+    border-top: 1px solid var(--color-separator);
+    margin: 4px 0;
+}
+
+/* ── Buttons (shared) ─────────────────────────────────────────────────── */
+
+.btn {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--color-text);
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    opacity: 0.8;
+}
+
+.btn.active {
+    background: var(--color-selected);
+    color: #ffffff;
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-separator);
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn-outline:hover {
+    background: var(--color-fill-secondary);
+    color: var(--color-text);
+}
+
+.btn-outline.active {
+    background: var(--color-selected);
+    color: #ffffff;
+    border-color: var(--color-selected);
+}
+
+/* ── Button Groups ────────────────────────────────────────────────────── */
+
+.btn-group {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-group--wrap {
+    flex-wrap: wrap;
+}
+
+/* ── Letter Input ─────────────────────────────────────────────────────── */
+
+.letter-input {
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    font-family: var(--font-family);
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    color: var(--color-text);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.letter-input:focus {
+    border-color: var(--color-selected);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+/* ── Reference Letter Select ──────────────────────────────────────────── */
+
+.ref-select {
+    flex: 1;
+    height: 28px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family);
+    font-size: 12px;
+    padding: 0 8px;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ref-select:focus {
+    border-color: var(--color-selected);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+/* ── Stroke Width Slider ───────────────────────────────────────────────── */
+
+.stroke-control {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    white-space: nowrap;
+    gap: 8px;
 }
 
-/* ── Buttons (inside control windows) ──────────────────────────────────── */
+.stroke-control input[type="range"] {
+    flex: 1;
+    accent-color: var(--color-selected);
+}
 
-.control-window button {
-    background: var(--color-text);
-    color: var(--color-bg);
-    border: none;
-    padding: 0.4rem 0.75rem;
-    cursor: pointer;
+.stroke-control .stroke-value {
+    font-size: 12px;
+    min-width: 40px;
+    width: 48px;
+    text-align: right;
+    background: var(--color-bg);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
     font-family: var(--font-family);
-    font-size: 0.8rem;
+    padding: 3px 6px;
+    -moz-appearance: textfield;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.control-window button:hover {
-    background: var(--color-selected);
+.stroke-control .stroke-value:focus {
+    border-color: var(--color-selected);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
 }
 
-/* ── Ratio Selector ────────────────────────────────────────────────────── */
+/* Hide number input spinners */
+.stroke-control .stroke-value::-webkit-outer-spin-button,
+.stroke-control .stroke-value::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 
-.ratio-selector {
+/* ── Icon Buttons (shape tools) ───────────────────────────────────────── */
+
+.btn-icon {
+    width: 30px;
+    height: 30px;
     display: flex;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-separator);
+    cursor: pointer;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
 }
 
-.control-window .ratio-btn {
+.btn-icon:hover {
+    background: var(--color-fill);
+    color: var(--color-text);
+    border-color: rgba(60, 60, 67, 0.2);
+}
+
+.btn-icon.active {
+    background: var(--color-selected);
+    color: #ffffff;
+    border-color: var(--color-selected);
+}
+
+.btn-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ── Status text ──────────────────────────────────────────────────────── */
+
+.status-text {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+/* ── Viewport Controls (bottom-left floating toolbar) ────────────────── */
+
+.viewport-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: rgba(40, 40, 40, 0.55);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+}
+
+.viewport-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    border: none;
+    border-radius: calc(var(--radius-lg) - 2px);
+    cursor: pointer;
+    font-size: 15px;
+    position: relative;
+    transition: background var(--transition-fast);
+}
+
+.viewport-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.viewport-btn.active {
+    color: var(--color-selected);
+}
+
+.viewport-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ── Viewport Tooltips ───────────────────────────────────────────────── */
+
+.viewport-tooltip {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    background: rgba(40, 40, 40, 0.75);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.viewport-btn:hover .viewport-tooltip {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* ── Alphabet Grid ───────────────────────────────────────────────────── */
+
+.alphabet-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alphabet-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-secondary);
+}
+
+.alphabet-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 32px);
+    gap: 3px;
+}
+
+.alphabet-cell {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family);
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
     background: transparent;
     color: var(--color-text);
-    border: 1px solid var(--color-text);
-    padding: 0.25rem 0.5rem;
+    opacity: 0.25;
     cursor: pointer;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.alphabet-cell:hover {
+    opacity: 0.6;
+    background: var(--color-fill);
+}
+
+.alphabet-cell.designed {
+    opacity: 1;
+    background: var(--color-fill);
+}
+
+.alphabet-cell.current {
+    background: var(--color-selected);
+    color: #ffffff;
+    opacity: 1;
+}
+
+/* Shape preview image inside grid cells */
+.cell-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+/* Invert preview strokes to white when cell is active (blue bg) */
+.alphabet-cell.current .cell-preview {
+    filter: brightness(0) invert(1);
+}
+
+/* ── Audio Meter ─────────────────────────────────────────────────────── */
+
+.audio-meter {
+    width: 100%;
+    height: 4px;
+    background: var(--color-fill);
+    margin-top: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.audio-meter-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--color-selected);
+    border-radius: 2px;
+    transition: width 0.05s linear;
+}
+
+/* ── Toast Notifications ────────────────────────────────────────────────── */
+
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(40, 40, 40, 0.85);
+    color: #fff;
     font-family: var(--font-family);
-    font-size: 0.75rem;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--radius-lg);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: auto;
 }
 
-.control-window .ratio-btn:hover,
-.control-window .ratio-btn.active {
-    background: var(--color-text);
-    color: var(--color-bg);
+.toast--visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
-/* ── Status Label ──────────────────────────────────────────────────────── */
+/* ── Viewport Letter HUD ──────────────────────────────────────────────── */
 
-.status {
-    margin-left: auto;
-    font-size: 0.75rem;
-    opacity: 0.5;
-}
-
-/* ── Guide Labels (letter panel) ───────────────────────────────────────── */
-
-.guide-label {
+.viewport-letter-hud {
     position: absolute;
-    font: 600 11px var(--font-family);
-    white-space: nowrap;
-    transform: translateY(-50%);
-    cursor: grab;
+    bottom: 24px;
+    right: 32px;
+    z-index: 5;
+    font-family: var(--font-family);
+    font-size: 120px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.12);
+    line-height: 1;
+    pointer-events: none;
     user-select: none;
 }
 
-.guide-label:active {
-    cursor: grabbing;
+/* ── Collapsible Sections ────────────────────────────────────────────── */
+
+.collapsible-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.collapsible-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.collapsible-toggle:hover {
+    color: var(--color-text);
+}
+
+.collapse-arrow {
+    font-size: 10px;
+    transition: transform var(--transition);
+    display: inline-block;
+}
+
+.collapsible-section:not([data-collapsed="true"]) .collapse-arrow {
+    transform: rotate(90deg);
+}
+
+.collapsible-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+    max-height: 500px;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    opacity: 1;
+}
+
+.collapsible-section[data-collapsed="true"] .collapsible-content {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* ── Editor Mode Indication ──────────────────────────────────────────── */
+
+.skeleton-editor--drawing {
+    border-color: var(--color-selected) !important;
+    box-shadow: 0 0 0 1px var(--color-selected);
+}
+
+.editor-mode-label {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-family: var(--font-family);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    pointer-events: none;
+    transition: color var(--transition-fast);
+}
+
+.skeleton-editor--drawing .editor-mode-label {
+    color: var(--color-selected);
+}
+
+/* ── Sidebar Resize Handle ───────────────────────────────────────────── */
+
+.sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 20;
+    transition: background var(--transition-fast);
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active {
+    background: var(--color-selected);
+    opacity: 0.5;
+}
+
+/* ── Grid Capture (pulsing button + disabled tabs) ──────────────────── */
+
+.btn--pulsing {
+    animation: btn-pulse 1.2s ease-in-out infinite;
+    background: var(--color-selected);
+    color: #ffffff;
+}
+
+@keyframes btn-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.sidebar-tab--disabled {
+    opacity: 0.3;
+    pointer-events: none;
 }
