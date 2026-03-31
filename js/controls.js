@@ -251,7 +251,7 @@ export function bindControls({ state, shapeEditor, bindingManager, letterStore, 
 
     // Tangency (slider 0-100 <-> input 0.00-1.00)
     linkSlider(tangencySlider, tangencyValueEl, {
-        onChange:     (v) => { shapeEditor.setTangencyStrength(v / 100); markDirty(); },
+        onChange:     (v) => { shapeEditor.setTangencyStrength(v / 100); letterStore.setAllTangency(v / 100); markDirty(); },
         toDisplay:   (v) => (v / 100).toFixed(2),
         fromDisplay: (v) => Math.round(v * 100),
     });
@@ -261,6 +261,7 @@ export function bindControls({ state, shapeEditor, bindingManager, letterStore, 
         capBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         shapeEditor.setLineCap(btn.dataset.cap);
+        letterStore.setAllLineCaps(btn.dataset.cap);
         markDirty();
     }));
 
@@ -269,6 +270,7 @@ export function bindControls({ state, shapeEditor, bindingManager, letterStore, 
         joinBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         shapeEditor.setLineJoin(btn.dataset.join);
+        letterStore.setAllLineJoins(btn.dataset.join);
         markDirty();
     }));
 

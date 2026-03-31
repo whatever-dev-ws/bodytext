@@ -242,10 +242,12 @@ export function loadCurrentLetter() {
         shapeEditor.loadShapes(data.shapes);
         shapeEditor.loadJoinFlags(data.joinFlags);
         bindingManager.loadBindings(data.bindings);
+        // Stroke width is global — apply current editor value to loaded shapes
         shapeEditor.setStrokeWidth(data.strokeWidth ?? shapeEditor.strokeWidth);
-        shapeEditor.setLineCap(data.lineCap ?? shapeEditor.lineCap);
-        shapeEditor.setLineJoin(data.lineJoin ?? shapeEditor.lineJoin);
-        shapeEditor.setTangencyStrength(data.tangencyStrength ?? shapeEditor.tangencyStrength);
+        // Cap, join, tangency are global — apply current editor values (not per-letter)
+        shapeEditor.setLineCap(shapeEditor.lineCap);
+        shapeEditor.setLineJoin(shapeEditor.lineJoin);
+        shapeEditor.setTangencyStrength(shapeEditor.tangencyStrength);
         syncStrokeUI();
         syncSideBearings(data.bearingLeft ?? 10, data.bearingRight ?? 10);
         letterStatus.textContent = `'${currentLetter}' loaded`;

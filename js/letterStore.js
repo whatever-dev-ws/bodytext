@@ -63,6 +63,50 @@ export class LetterStore {
     }
 
     /**
+     * Update lineCap globally across all saved letters.
+     */
+    setAllLineCaps(cap) {
+        for (const data of this.letters.values()) {
+            data.lineCap = cap;
+            if (data.shapes) {
+                for (const shape of data.shapes) {
+                    shape.lineCap = cap;
+                }
+            }
+        }
+    }
+
+    /**
+     * Update lineJoin globally across all saved letters.
+     */
+    setAllLineJoins(join) {
+        for (const data of this.letters.values()) {
+            data.lineJoin = join;
+            if (data.shapes) {
+                for (const shape of data.shapes) {
+                    shape.lineJoin = join;
+                }
+            }
+        }
+    }
+
+    /**
+     * Update tangencyStrength globally across all saved letters.
+     */
+    setAllTangency(val) {
+        for (const data of this.letters.values()) {
+            data.tangencyStrength = val;
+            if (data.shapes) {
+                for (const shape of data.shapes) {
+                    if (shape.type === 'arc') {
+                        shape.tangency = val;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Export all letters + project settings as a JSON file download.
      * @param {object} [guideState] — current guide metrics to include
      */
