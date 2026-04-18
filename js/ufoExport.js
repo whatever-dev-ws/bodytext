@@ -41,7 +41,56 @@ function plistDict(entries, indent = '') {
 }
 
 function escXml(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+/* ── Glyph name (AGL → PostScript) ───────────────────────────── */
+
+const AGL = {
+    ' ':'space','!':'exclam','"':'quotedbl','#':'numbersign','$':'dollar',
+    '%':'percent','&':'ampersand',"'":'quotesingle','(':'parenleft',')':'parenright',
+    '*':'asterisk','+':'plus',',':'comma','-':'hyphen','.':'period','/':'slash',
+    ':':'colon',';':'semicolon','<':'less','=':'equal','>':'greater','?':'question',
+    '@':'at','[':'bracketleft','\\':'backslash',']':'bracketright','^':'asciicircum',
+    '_':'underscore','`':'grave','{':'braceleft','|':'bar','}':'braceright','~':'asciitilde',
+    '\u00A0':'nbspace','\u00A1':'exclamdown','\u00A2':'cent','\u00A3':'sterling',
+    '\u00A5':'yen','\u00A7':'section','\u00A9':'copyright','\u00AB':'guillemotleft',
+    '\u00AE':'registered','\u00B0':'degree','\u00B1':'plusminus','\u00B7':'periodcentered',
+    '\u00BB':'guillemotright','\u00BF':'questiondown',
+    '\u00C0':'Agrave','\u00C1':'Aacute','\u00C2':'Acircumflex','\u00C3':'Atilde',
+    '\u00C4':'Adieresis','\u00C5':'Aring','\u00C6':'AE','\u00C7':'Ccedilla',
+    '\u00C8':'Egrave','\u00C9':'Eacute','\u00CA':'Ecircumflex','\u00CB':'Edieresis',
+    '\u00CC':'Igrave','\u00CD':'Iacute','\u00CE':'Icircumflex','\u00CF':'Idieresis',
+    '\u00D1':'Ntilde','\u00D2':'Ograve','\u00D3':'Oacute','\u00D4':'Ocircumflex',
+    '\u00D5':'Otilde','\u00D6':'Odieresis','\u00D8':'Oslash','\u00D9':'Ugrave',
+    '\u00DA':'Uacute','\u00DB':'Ucircumflex','\u00DC':'Udieresis','\u00DF':'germandbls',
+    '\u00E0':'agrave','\u00E1':'aacute','\u00E2':'acircumflex','\u00E3':'atilde',
+    '\u00E4':'adieresis','\u00E5':'aring','\u00E6':'ae','\u00E7':'ccedilla',
+    '\u00E8':'egrave','\u00E9':'eacute','\u00EA':'ecircumflex','\u00EB':'edieresis',
+    '\u00EC':'igrave','\u00ED':'iacute','\u00EE':'icircumflex','\u00EF':'idieresis',
+    '\u00F1':'ntilde','\u00F2':'ograve','\u00F3':'oacute','\u00F4':'ocircumflex',
+    '\u00F5':'otilde','\u00F6':'odieresis','\u00F8':'oslash','\u00F9':'ugrave',
+    '\u00FA':'uacute','\u00FB':'ucircumflex','\u00FC':'udieresis',
+    '\u2013':'endash','\u2014':'emdash','\u2018':'quoteleft','\u2019':'quoteright',
+    '\u201A':'quotesinglbase','\u201C':'quotedblleft','\u201D':'quotedblright',
+    '\u201E':'quotedblbase','\u2020':'dagger','\u2021':'daggerdbl','\u2022':'bullet',
+    '\u2026':'ellipsis','\u2030':'perthousand','\u2039':'guilsinglleft','\u203A':'guilsinglright',
+    '\u20AC':'Euro',
+};
+
+/** Convert a single char to a PostScript-safe glyph name. */
+function charToGlyphName(ch) {
+    if (ch === '.notdef') return '.notdef';
+    if (AGL[ch]) return AGL[ch];
+    if (/^[A-Za-z][A-Za-z0-9]*$/.test(ch)) return ch;
+    const cp = ch.codePointAt(0);
+    if (cp <= 0xFFFF) return 'uni' + cp.toString(16).toUpperCase().padStart(4, '0');
+    return 'u' + cp.toString(16).toUpperCase().padStart(5, '0');
 }
 
 /* ── Plist file generators ───────────────────────────────────── */
@@ -106,16 +155,49 @@ function generateLib() {
 /* ── UFO glyph filename convention ───────────────────────────── */
 
 /**
- * Convert a glyph name to a valid UFO filename.
- * Uppercase letters get an underscore suffix to avoid case-insensitive
- * filesystem collisions (e.g. 'A' → 'A_.glif', 'a' → 'a.glif').
+ * UFO 3 user-name-to-file-name algorithm.
+ * https://unifiedfontobject.org/versions/ufo3/conventions/#user-name-to-file-name
+ *
+ * - Illegal filesystem chars → "_"
+ * - Uppercase letters → append "_" to handle case-insensitive filesystems
+ * - Reserved Windows device names → prefix "_"
+ * - Leading "." → prefix "_"
+ * - Truncate to 255 bytes
+ * - Collisions resolved by caller via `existing` set
  */
-function glyphNameToFilename(name) {
-    if (name === '.notdef') return '_notdef.glif';
-    // Single character — apply UFO naming rules
-    const ch = name.charAt(0);
-    if (ch >= 'A' && ch <= 'Z') return `${name}_.glif`;
-    return `${name}.glif`;
+const UFO_ILLEGAL = new Set('"*+/:<>?[\\]|'.split(''));
+const UFO_RESERVED = new Set([
+    'CON','PRN','AUX','NUL','CLOCK$',
+    'COM1','COM2','COM3','COM4','COM5','COM6','COM7','COM8','COM9',
+    'LPT1','LPT2','LPT3','LPT4','LPT5','LPT6','LPT7','LPT8','LPT9',
+]);
+
+function glyphNameToFilename(name, existing) {
+    let out = '';
+    for (const ch of name) {
+        const code = ch.codePointAt(0);
+        if (code < 0x20 || code === 0x7F || UFO_ILLEGAL.has(ch)) {
+            out += '_';
+        } else if (ch >= 'A' && ch <= 'Z') {
+            out += ch + '_';
+        } else {
+            out += ch;
+        }
+    }
+    if (!out) out = '_';
+    if (out.startsWith('.')) out = '_' + out.slice(1);
+    const base = out.split('.')[0].toUpperCase();
+    if (UFO_RESERVED.has(base)) out = '_' + out;
+    if (out.length > 250) out = out.slice(0, 250);
+
+    let candidate = out + '.glif';
+    let n = 1;
+    while (existing && existing.has(candidate.toLowerCase())) {
+        candidate = `${out}_${String(n).padStart(15, '0')}.glif`;
+        n++;
+    }
+    if (existing) existing.add(candidate.toLowerCase());
+    return candidate;
 }
 
 /* ── opentype.Path → GLIF XML contours ───────────────────────── */
@@ -204,7 +286,7 @@ function r(v) { return Math.round(v); }
 
 function generateGlif(glyphName, unicodeVal, advanceWidth, opentypePath) {
     const hexUni = unicodeVal != null
-        ? `  <unicode hex="${unicodeVal.toString(16).toUpperCase().padStart(4, '0')}"/>\n`
+        ? `  <unicode hex="${unicodeVal.toString(16).toUpperCase().padStart(4, '0').toUpperCase()}"/>\n`
         : '';
 
     return `<?xml version="1.0" encoding="UTF-8"?>
@@ -242,6 +324,7 @@ export async function exportUFO(letterStore, metrics, fontFamily = 'bodyText') {
 
     // ── Glyphs ──
     const glyphMap = []; // [glyphName, filename] pairs for contents.plist
+    const usedFilenames = new Set();
 
     // .notdef glyph
     const ascender = metrics?.ascender ?? 800;
@@ -251,7 +334,7 @@ export async function exportUFO(letterStore, metrics, fontFamily = 'bodyText') {
     notdefPath.lineTo(500, ascender);
     notdefPath.lineTo(500, 0);
     notdefPath.closePath();
-    const notdefFile = glyphNameToFilename('.notdef');
+    const notdefFile = glyphNameToFilename('.notdef', usedFilenames);
     glyphsDir.file(notdefFile, generateGlif('.notdef', null, 650, notdefPath));
     glyphMap.push(['.notdef', notdefFile]);
 
@@ -273,9 +356,9 @@ export async function exportUFO(letterStore, metrics, fontFamily = 'bodyText') {
             xShift,
         );
 
-        const glyphName = char;
-        const fileName = glyphNameToFilename(glyphName);
-        const unicode = char.charCodeAt(0);
+        const glyphName = charToGlyphName(char);
+        const fileName = glyphNameToFilename(glyphName, usedFilenames);
+        const unicode = char.codePointAt(0);
 
         glyphsDir.file(fileName, generateGlif(glyphName, unicode, advanceWidth, path));
         glyphMap.push([glyphName, fileName]);
